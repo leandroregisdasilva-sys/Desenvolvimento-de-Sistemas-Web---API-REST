@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Agência de Viagens — Painel de Destinos</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+      border-bottom: 1px solid #1e40af44;
+      padding: 24px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    header .logo { font-size: 28px; }
+    header h1 { font-size: 22px; font-weight: 700; color: #60a5fa; }
+    header p  { font-size: 13px; color: #94a3b8; margin-top: 2px; }
+
+    /* ── Layout ── */
+    .container {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 80px);
+    }
+
+    /* ── Sidebar ── */
+    aside {
+      background: #111827;
+      border-right: 1px solid #1e293b;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    aside h2 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #475569;
+      padding: 0 8px;
+      margin-bottom: 4px;
+    }
+    .nav-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: left;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all .15s;
+      width: 100%;
+    }
+    .nav-btn:hover { background: #1e293b; color: #e2e8f0; }
+    .nav-btn.active { background: #1e3a5f; color: #60a5fa; font-weight: 600; }
+    .nav-btn .badge {
+      margin-left: auto;
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 99px;
+      font-weight: 600;
+    }
+    .badge-get    { background:#064e3b; color:#34d399; }
+    .badge-post   { background:#1e3a5f; color:#60a5fa; }
+    .badge-put    { background:#451a03; color:#fb923c; }
+    .badge-patch  { background:#4a1d96; color:#c084fc; }
+    .badge-delete { background:#450a0a; color:#f87171; }
+
+    /* ── Main panel ── */
+    main {
+      padding: 32px 40px;
+      overflow-y: auto;
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .panel h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 6px;
+    }
+    .panel .subtitle {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 24px;
+    }
+
+    /* ── Form ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .form-grid.full { grid-template-columns: 1fr; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    input, textarea {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus, textarea:focus { border-color: #3b82f6; }
+    textarea { min-height: 80px; resize: vertical; font-family: inherit; }
+
+    .btn {
+      padding: 10px 22px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-success { background: #059669; color: #fff; }
+    .btn-warning { background: #d97706; color: #fff; }
+    .btn-purple  { background: #7c3aed; color: #fff; }
+    .btn-danger  { background: #dc2626; color: #fff; }
+
+    /* ── Response box ── */
+    .response-box {
+      margin-top: 24px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .response-header {
+      padding: 10px 16px;
+      background: #1e293b;
+      font-size: 12px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-pill {
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .ok    { background:#064e3b; color:#34d399; }
+    .err   { background:#450a0a; color:#f87171; }
+    .empty { background:#1e293b; color:#64748b; }
+    pre {
+      padding: 16px;
+      font-size: 13px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #a5f3fc;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    /* ── Cards de destinos ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 18px;
+      transition: border-color .15s;
+    }
+    .card:hover { border-color: #3b82f6; }
+    .card-id   { font-size: 11px; color: #475569; margin-bottom: 4px; }
+    .card-name { font-size: 17px; font-weight: 700; color: #f1f5f9; margin-bottom: 2px; }
+    .card-loc  { font-size: 13px; color: #60a5fa; margin-bottom: 8px; }
+    .card-desc { font-size: 13px; color: #94a3b8; margin-bottom: 12px; line-height: 1.5; }
+    .card-stars { font-size: 13px; color: #fbbf24; }
+    .card-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    .tag {
+      font-size: 11px;
+      background: #0f172a;
+      color: #64748b;
+      padding: 3px 9px;
+      border-radius: 99px;
+      border: 1px solid #1e293b;
+    }
+
+    .sep { border: none; border-top: 1px solid #1e293b; margin: 24px 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">✈️</div>
+  <div>
+    <h1>Agência de Viagens</h1>
+    <p>Painel de gerenciamento de destinos — API REST</p>
+  </div>
+</header>
+
+<div class="container">
+  <aside>
+    <h2>Endpoints</h2>
+    <button class="nav-btn active" onclick="show('listar')">
+      🗂 Listar destinos <span class="badge badge-get">GET</span>
+    </button>
+    <button class="nav-btn" onclick="show('buscar')">
+      🔍 Buscar por ID <span class="badge badge-get">GET</span>
+    </button>
+    <button class="nav-btn" onclick="show('pesquisar')">
+      🔎 Pesquisar <span class="badge badge-get">GET</span>
+    </button>
+    <button class="nav-btn" onclick="show('cadastrar')">
+      ➕ Cadastrar <span class="badge badge-post">POST</span>
+    </button>
+    <button class="nav-btn" onclick="show('atualizar')">
+      ✏️ Atualizar <span class="badge badge-put">PUT</span>
+    </button>
+    <button class="nav-btn" onclick="show('avaliar')">
+      ⭐ Avaliar <span class="badge badge-patch">PATCH</span>
+    </button>
+    <button class="nav-btn" onclick="show('excluir')">
+      🗑 Excluir <span class="badge badge-delete">DELETE</span>
+    </button>
+  </aside>
+
+  <main>
+
+    <!-- LISTAR -->
+    <div id="panel-listar" class="panel active">
+      <h2>Listar todos os destinos</h2>
+      <p class="subtitle">GET /destinos — retorna todos os destinos cadastrados</p>
+      <button class="btn btn-success" onclick="listar()">▶ Executar</button>
+      <div id="cards-container" class="cards" style="margin-top:24px"></div>
+      <div id="res-listar" class="response-box" style="margin-top:16px; display:none"></div>
+    </div>
+
+    <!-- BUSCAR -->
+    <div id="panel-buscar" class="panel">
+      <h2>Buscar destino por ID</h2>
+      <p class="subtitle">GET /destinos/{id}</p>
+      <div class="form-grid full">
+        <div><label>ID do destino</label><input id="buscar-id" type="number" placeholder="Ex: 1"/></div>
+      </div>
+      <button class="btn btn-primary" onclick="buscarPorId()">▶ Executar</button>
+      <div id="res-buscar" class="response-box" style="display:none; margin-top:24px"></div>
+    </div>
+
+    <!-- PESQUISAR -->
+    <div id="panel-pesquisar" class="panel">
+      <h2>Pesquisar destinos</h2>
+      <p class="subtitle">GET /destinos?busca={termo} — busca por nome ou localização</p>
+      <div class="form-grid full">
+        <div><label>Termo de busca</label><input id="pesquisar-termo" type="text" placeholder="Ex: Paris, Brasil, Japão..."/></div>
+      </div>
+      <button class="btn btn-primary" onclick="pesquisar()">▶ Executar</button>
+      <div id="res-pesquisar" class="response-box" style="display:none; margin-top:24px"></div>
+    </div>
+
+    <!-- CADASTRAR -->
+    <div id="panel-cadastrar" class="panel">
+      <h2>Cadastrar novo destino</h2>
+      <p class="subtitle">POST /destinos</p>
+      <div class="form-grid">
+        <div><label>Nome *</label><input id="cad-nome" type="text" placeholder="Ex: Lisboa"/></div>
+        <div><label>Localização *</label><input id="cad-loc" type="text" placeholder="Ex: Lisboa, Portugal"/></div>
+      </div>
+      <div class="form-grid full">
+        <div><label>Descrição</label><textarea id="cad-desc" placeholder="Descreva o destino..."></textarea></div>
+        <div><label>Atividades (separadas por vírgula)</label><input id="cad-ativ" type="text" placeholder="Ex: Torre de Belém, Alfama, Mosteiro"/></div>
+      </div>
+      <button class="btn btn-success" onclick="cadastrar()">▶ Cadastrar</button>
+      <div id="res-cadastrar" class="response-box" style="display:none; margin-top:24px"></div>
+    </div>
+
+    <!-- ATUALIZAR -->
+    <div id="panel-atualizar" class="panel">
+      <h2>Atualizar destino</h2>
+      <p class="subtitle">PUT /destinos/{id} — substitui todos os dados do destino</p>
+      <div class="form-grid">
+        <div><label>ID do destino *</label><input id="upd-id" type="number" placeholder="Ex: 1"/></div>
+        <div><label>Nome *</label><input id="upd-nome" type="text" placeholder="Ex: Paris"/></div>
+      </div>
+      <div class="form-grid">
+        <div><label>Localização *</label><input id="upd-loc" type="text" placeholder="Ex: Paris, França"/></div>
+        <div><label>Atividades (separadas por vírgula)</label><input id="upd-ativ" type="text" placeholder="Ex: Torre Eiffel, Louvre"/></div>
+      </div>
+      <div class="form-grid full">
+        <div><label>Descrição</label><textarea id="upd-desc" placeholder="Nova descrição..."></textarea></div>
+      </div>
+      <button class="btn btn-warning" onclick="atualizar()">▶ Atualizar</button>
+      <div id="res-atualizar" class="response-box" style="display:none; margin-top:24px"></div>
+    </div>
+
+    <!-- AVALIAR -->
+    <div id="panel-avaliar" class="panel">
+      <h2>Avaliar destino</h2>
+      <p class="subtitle">PATCH /destinos/{id}/avaliacao — registra nota e recalcula a média</p>
+      <div class="form-grid">
+        <div><label>ID do destino *</label><input id="aval-id" type="number" placeholder="Ex: 1"/></div>
+        <div><label>Nota (1.0 a 5.0) *</label><input id="aval-nota" type="number" step="0.1" min="1" max="5" placeholder="Ex: 4.5"/></div>
+      </div>
+      <button class="btn btn-purple" onclick="avaliar()">▶ Avaliar</button>
+      <div id="res-avaliar" class="response-box" style="display:none; margin-top:24px"></div>
+    </div>
+
+    <!-- EXCLUIR -->
+    <div id="panel-excluir" class="panel">
+      <h2>Excluir destino</h2>
+      <p class="subtitle">DELETE /destinos/{id}</p>
+      <div class="form-grid full">
+        <div><label>ID do destino *</label><input id="del-id" type="number" placeholder="Ex: 2"/></div>
+      </div>
+      <button class="btn btn-danger" onclick="excluir()">▶ Excluir</button>
+      <div id="res-excluir" class="response-box" style="display:none; margin-top:24px"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  const API = 'http://localhost:8080';
+
+  // ── Navegação ──────────────────────────────────────────────
+  function show(name) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  // ── Renderizar resposta ────────────────────────────────────
+  function renderRes(id, status, data) {
+    const box = document.getElementById(id);
+    box.style.display = 'block';
+    const ok = status >= 200 && status < 300;
+    const pill = status === 0
+      ? `<span class="status-pill empty">ERRO DE CONEXÃO</span>`
+      : `<span class="status-pill ${ok ? 'ok' : 'err'}">${status}</span>`;
+    box.innerHTML = `
+      <div class="response-header">${pill} <span>${ok ? 'Sucesso' : 'Erro'}</span></div>
+      <pre>${JSON.stringify(data, null, 2)}</pre>`;
+  }
+
+  // ── Renderizar cards ───────────────────────────────────────
+  function renderCards(destinos) {
+    const c = document.getElementById('cards-container');
+    if (!destinos.length) { c.innerHTML = '<p style="color:#64748b">Nenhum destino encontrado.</p>'; return; }
+    c.innerHTML = destinos.map(d => `
+      <div class="card">
+        <div class="card-id">ID: ${d.id}</div>
+        <div class="card-name">${d.nome}</div>
+        <div class="card-loc">📍 ${d.localizacao}</div>
+        <div class="card-desc">${d.descricao || '—'}</div>
+        <div class="card-stars">${estrelas(d.mediaAvaliacoes)} ${d.mediaAvaliacoes.toFixed(1)} (${d.totalAvaliacoes} avaliações)</div>
+        <div class="card-tags">${(d.atividades||[]).map(a=>`<span class="tag">${a}</span>`).join('')}</div>
+      </div>`).join('');
+  }
+
+  function estrelas(n) {
+    const cheias = Math.round(n);
+    return '★'.repeat(cheias) + '☆'.repeat(5 - cheias);
+  }
+
+  // ── Endpoints ──────────────────────────────────────────────
+  async function listar() {
+    try {
+      const r = await fetch(`${API}/destinos`);
+      const d = await r.json();
+      renderCards(Array.isArray(d) ? d : []);
+      document.getElementById('res-listar').style.display = 'none';
+    } catch(e) {
+      renderRes('res-listar', 0, { erro: 'Não foi possível conectar. A API está rodando?' });
+    }
+  }
+
+  async function buscarPorId() {
+    const id = document.getElementById('buscar-id').value;
+    if (!id) return alert('Informe o ID');
+    try {
+      const r = await fetch(`${API}/destinos/${id}`);
+      renderRes('res-buscar', r.status, await r.json());
+    } catch(e) {
+      renderRes('res-buscar', 0, { erro: 'Não foi possível conectar.' });
+    }
+  }
+
+  async function pesquisar() {
+    const t = document.getElementById('pesquisar-termo').value;
+    if (!t) return alert('Informe um termo de busca');
+    try {
+      const r = await fetch(`${API}/destinos?busca=${encodeURIComponent(t)}`);
+      renderRes('res-pesquisar', r.status, await r.json());
+    } catch(e) {
+      renderRes('res-pesquisar', 0, { erro: 'Não foi possível conectar.' });
+    }
+  }
+
+  async function cadastrar() {
+    const nome = document.getElementById('cad-nome').value;
+    const loc  = document.getElementById('cad-loc').value;
+    if (!nome || !loc) return alert('Nome e Localização são obrigatórios');
+    const ativ = document.getElementById('cad-ativ').value
+      .split(',').map(s=>s.trim()).filter(Boolean);
+    const body = {
+      nome, localizacao: loc,
+      descricao: document.getElementById('cad-desc').value,
+      atividades: ativ
+    };
+    try {
+      const r = await fetch(`${API}/destinos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      renderRes('res-cadastrar', r.status, await r.json());
+    } catch(e) {
+      renderRes('res-cadastrar', 0, { erro: 'Não foi possível conectar.' });
+    }
+  }
+
+  async function atualizar() {
+    const id   = document.getElementById('upd-id').value;
+    const nome = document.getElementById('upd-nome').value;
+    const loc  = document.getElementById('upd-loc').value;
+    if (!id || !nome || !loc) return alert('ID, Nome e Localização são obrigatórios');
+    const ativ = document.getElementById('upd-ativ').value
+      .split(',').map(s=>s.trim()).filter(Boolean);
+    const body = {
+      nome, localizacao: loc,
+      descricao: document.getElementById('upd-desc').value,
+      atividades: ativ
+    };
+    try {
+      const r = await fetch(`${API}/destinos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      renderRes('res-atualizar', r.status, await r.json());
+    } catch(e) {
+      renderRes('res-atualizar', 0, { erro: 'Não foi possível conectar.' });
+    }
+  }
+
+  async function avaliar() {
+    const id   = document.getElementById('aval-id').value;
+    const nota = document.getElementById('aval-nota').value;
+    if (!id || !nota) return alert('ID e Nota são obrigatórios');
+    try {
+      const r = await fetch(`${API}/destinos/${id}/avaliacao`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nota: parseFloat(nota) })
+      });
+      renderRes('res-avaliar', r.status, await r.json());
+    } catch(e) {
+      renderRes('res-avaliar', 0, { erro: 'Não foi possível conectar.' });
+    }
+  }
+
+  async function excluir() {
+    const id = document.getElementById('del-id').value;
+    if (!id) return alert('Informe o ID');
+    if (!confirm(`Confirma exclusão do destino ID ${id}?`)) return;
+    try {
+      const r = await fetch(`${API}/destinos/${id}`, { method: 'DELETE' });
+      if (r.status === 204) {
+        renderRes('res-excluir', 204, { mensagem: `Destino ${id} excluído com sucesso.` });
+      } else {
+        renderRes('res-excluir', r.status, await r.json());
+      }
+    } catch(e) {
+      renderRes('res-excluir', 0, { erro: 'Não foi possível conectar.' });
+    }
+  }
+
+  // Carrega a listagem ao abrir
+  listar();
+</script>
+</body>
+</html>
