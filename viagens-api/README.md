@@ -1,239 +1,201 @@
-# Viagens API
+# Viagens API — v2
 
-API RESTful para gerenciamento de destinos de viagem, desenvolvida como solução ao **Desafio 1 — Desenvolvimento de Sistemas Web** (UniSENAI · ADS · 2026/2).
+API RESTful para gerenciamento de destinos de viagem, evoluída com **PostgreSQL**, **Spring Data JPA** e **Spring Security**.
+
+Desenvolvida como solução ao **Desafio 2 — Desenvolvimento de Sistemas Web** (UniSENAI · ADS · 2026/2).
 
 ---
 
 ## Sumário
 
-1. [Visão Geral do Problema](#1-visão-geral-do-problema)
-2. [Arquitetura Proposta](#2-arquitetura-proposta)
-3. [Tecnologias Utilizadas](#3-tecnologias-utilizadas)
-4. [Estrutura do Projeto](#4-estrutura-do-projeto)
-5. [Endpoints da API](#5-endpoints-da-api)
-6. [Como Executar](#6-como-executar)
-7. [Exemplos de Teste](#7-exemplos-de-teste)
-8. [Funcionalidade de Avaliação](#8-funcionalidade-de-avaliação)
-9. [Interface Web](#9-interface-web)
+1. [Visão Geral](#1-visão-geral)
+2. [Tecnologias Utilizadas](#2-tecnologias-utilizadas)
+3. [Arquitetura](#3-arquitetura)
+4. [Configuração do Banco de Dados](#4-configuração-do-banco-de-dados)
+5. [Como Executar](#5-como-executar)
+6. [Usuários e Perfis de Teste](#6-usuários-e-perfis-de-teste)
+7. [Endpoints e Regras de Acesso](#7-endpoints-e-regras-de-acesso)
+8. [Exemplos de Requisições](#8-exemplos-de-requisições)
 
 ---
 
-## 1. Visão Geral do Problema
+## 1. Visão Geral
 
-Uma agência de viagens em processo de modernização digital necessita de uma **API REST** para centralizar o gerenciamento de seus destinos turísticos e possibilitar integração com aplicativos parceiros, plataformas de turismo e sistemas futuros.
+Esta versão evolui a API desenvolvida no Desafio 1, substituindo o armazenamento em memória por um banco de dados **PostgreSQL** e adicionando **autenticação e autorização** com Spring Security.
 
-A empresa opera atualmente com um site institucional e um sistema interno de reservas desconectados. A ausência de uma API padronizada impede a integração com parceiros externos e limita a escalabilidade dos serviços digitais.
+### O que mudou em relação à v1
 
-### Funcionalidades implementadas
-
-- Cadastrar destinos de viagem com nome, localização, descrição e atividades
-- Listar todos os destinos disponíveis
-- Pesquisar destinos por nome ou localização
-- Visualizar detalhes de um destino específico
-- Atualizar informações de um destino existente
-- Registrar avaliações e recalcular automaticamente a média
-- Excluir destinos do sistema
-
----
-
-## 2. Arquitetura Proposta
-
-A aplicação adota a **Arquitetura em Camadas (Layered Architecture)**, padrão amplamente utilizado em projetos Spring Boot.
-
-```
-┌─────────────────────────────────────┐
-│         Cliente (HTTP/Browser)      │
-└──────────────────┬──────────────────┘
-                   │ requisição HTTP
-┌──────────────────▼──────────────────┐
-│   Controller  (camada web)          │  ← recebe e devolve HTTP
-│   DestinoController                 │
-└──────────────────┬──────────────────┘
-                   │ delega
-┌──────────────────▼──────────────────┐
-│   Service  (regras de negócio)      │  ← toda lógica fica aqui
-│   DestinoService                    │
-└──────────────────┬──────────────────┘
-                   │ lê/escreve
-┌──────────────────▼──────────────────┐
-│   Model + Repositório em Memória    │  ← entidade + ConcurrentHashMap
-│   Destino, DTOs                     │
-└─────────────────────────────────────┘
-```
-
-### Responsabilidade de cada camada
-
-| Camada | Responsabilidade |
-|---|---|
-| **Controller** | Recebe requisições HTTP, valida entrada, delega ao Service e retorna a resposta |
-| **Service** | Contém toda a lógica de negócio: cálculo de médias, validações, operações no repositório |
-| **Model/Entity** | Define a estrutura dos dados (Destino) e os DTOs de entrada (DestinoRequest, AvaliacaoRequest) |
-| **Exception** | Centraliza o tratamento de erros com respostas JSON padronizadas |
-
-### Por que essa arquitetura?
-
-- **Separação de responsabilidades** — cada camada tem uma função específica, facilitando testes e manutenção
-- **Evolução independente** — trocar o armazenamento em memória por JPA/banco de dados não exige alterar o Controller
-- **Testabilidade** — a DestinoService pode ser testada unitariamente sem subir o servidor HTTP
-- **Padrão de mercado** — modelo referência para APIs REST com Spring Boot
-
----
-
-## 3. Tecnologias Utilizadas
-
-| Tecnologia | Papel | Justificativa |
+| Aspecto | v1 | v2 |
 |---|---|---|
-| **Java 8** | Linguagem principal | Amplamente adotado no mercado; compatível com o ambiente de desenvolvimento |
-| **Spring Boot 2.7** | Framework principal | Reduz configuração manual; servidor Tomcat embutido; ideal para APIs REST |
-| **Spring Web (MVC)** | Camada HTTP | Mapeamento de rotas via anotações (`@RestController`, `@GetMapping`, etc.) |
-| **Spring Validation** | Validação de dados | Bean Validation (JSR-380); valida DTOs de entrada sem código manual |
-| **Maven** | Gerenciador de build | Gerencia dependências e ciclo de build de forma declarativa via `pom.xml` |
-| **ConcurrentHashMap** | Repositório em memória | Thread-safe para ambiente web; múltiplas requisições simultâneas sem conflito |
-| **JUnit 5** | Testes unitários | Garante que cada funcionalidade se comporta conforme esperado |
+| Armazenamento | Memória (ConcurrentHashMap) | PostgreSQL |
+| Persistência | Temporária | Permanente |
+| Autenticação | Nenhuma | HTTP Basic (Spring Security) |
+| Autorização | Nenhuma | Perfis ADMIN e USER |
+| Acesso a dados | Direto no Service | Via Repository (JPA) |
 
 ---
 
-## 4. Estrutura do Projeto
+## 2. Tecnologias Utilizadas
 
-```
-viagens-api/
-├── pom.xml                                        ← dependências e build
-├── README.md                                      ← documentação técnica
-└── src/
-    ├── main/
-    │   ├── java/com/agencia/viagens/
-    │   │   ├── ViagensApiApplication.java         ← ponto de entrada (@SpringBootApplication)
-    │   │   ├── controller/
-    │   │   │   └── DestinoController.java         ← endpoints HTTP
-    │   │   ├── service/
-    │   │   │   └── DestinoService.java            ← lógica de negócio + repositório em memória
-    │   │   ├── model/
-    │   │   │   ├── Destino.java                   ← entidade principal
-    │   │   │   ├── DestinoRequest.java            ← DTO de entrada (cadastro/atualização)
-    │   │   │   └── AvaliacaoRequest.java          ← DTO para registrar avaliação
-    │   │   └── exception/
-    │   │       ├── DestinoNotFoundException.java  ← exceção de recurso não encontrado
-    │   │       └── GlobalExceptionHandler.java    ← tratamento centralizado de erros
-    │   └── resources/
-    │       ├── static/index.html                  ← interface web para testar a API
-    │       └── application.properties
-    └── test/
-        └── java/com/agencia/viagens/service/
-            └── DestinoServiceTest.java            ← testes unitários da camada de serviço
-```
+| Tecnologia | Versão | Papel |
+|---|---|---|
+| Java | 8 | Linguagem principal |
+| Spring Boot | 2.7.18 | Framework principal |
+| Spring Web | 2.7.18 | Camada HTTP e REST |
+| Spring Data JPA | 2.7.18 | Persistência e acesso a dados |
+| Spring Security | 2.7.18 | Autenticação e autorização |
+| Spring Validation | 2.7.18 | Validação de dados de entrada |
+| PostgreSQL | 14+ | Banco de dados relacional |
+| Flyway | 8.x | Versionamento do esquema do banco |
+| Hibernate | 5.6.x | ORM (mapeamento objeto-relacional) |
+| BCrypt | — | Hash seguro de senhas |
+| Maven | 3.8+ | Gerenciador de dependências e build |
 
 ---
 
-## 5. Endpoints da API
+## 3. Arquitetura
 
-**Base URL:** `http://localhost:8080`
+A aplicação segue a **Arquitetura em Camadas**:
 
-| Método | Rota | Descrição | Corpo | Retorno |
-|---|---|---|---|---|
-| `GET` | `/destinos` | Lista todos os destinos | — | `200 OK` |
-| `GET` | `/destinos?busca={termo}` | Pesquisa por nome ou localização | — | `200 OK` |
-| `GET` | `/destinos/{id}` | Retorna um destino específico | — | `200 OK` |
-| `POST` | `/destinos` | Cadastra novo destino | JSON | `201 Created` |
-| `PUT` | `/destinos/{id}` | Atualiza destino completo | JSON | `200 OK` |
-| `PATCH` | `/destinos/{id}/avaliacao` | Registra avaliação e recalcula média | JSON | `200 OK` |
-| `DELETE` | `/destinos/{id}` | Remove o destino | — | `204 No Content` |
-
-### Corpo das requisições
-
-**POST `/destinos` e PUT `/destinos/{id}`:**
-```json
-{
-  "nome": "Lisboa",
-  "localizacao": "Lisboa, Portugal",
-  "descricao": "Capital histórica de Portugal.",
-  "atividades": ["Torre de Belém", "Alfama", "Mosteiro dos Jerônimos"]
-}
+```
+┌─────────────────────────────────────────┐
+│         Cliente (HTTP/Postman)          │
+└──────────────────┬──────────────────────┘
+                   │ HTTP + Credenciais (Basic Auth)
+┌──────────────────▼──────────────────────┐
+│   Spring Security (Autenticação/Autorização) │
+└──────────────────┬──────────────────────┘
+                   │ se autenticado e autorizado
+┌──────────────────▼──────────────────────┐
+│   Controller  (camada web)              │
+│   DestinoController                     │
+└──────────────────┬──────────────────────┘
+                   │ delega
+┌──────────────────▼──────────────────────┐
+│   Service  (regras de negócio)          │
+│   DestinoService                        │
+└──────────────────┬──────────────────────┘
+                   │ acessa dados via
+┌──────────────────▼──────────────────────┐
+│   Repository  (acesso a dados)          │
+│   DestinoRepository (JpaRepository)     │
+└──────────────────┬──────────────────────┘
+                   │ persiste em
+┌──────────────────▼──────────────────────┐
+│   PostgreSQL  (banco de dados)          │
+└─────────────────────────────────────────┘
 ```
 
-**PATCH `/destinos/{id}/avaliacao`:**
-```json
-{
-  "nota": 4.5
-}
-```
-> A nota deve estar entre **1.0** e **5.0**.
+### Regras de autorização
 
-### Formato de resposta de erro
-
-```json
-{
-  "timestamp": "2026-08-30T14:32:00",
-  "status": 404,
-  "erro": "Not Found",
-  "mensagem": "Destino com ID 99 não encontrado."
-}
-```
-
-| Situação | Status HTTP |
-|---|---|
-| ID inexistente | `404 Not Found` |
-| Campos inválidos ou ausentes | `400 Bad Request` |
-| Nota fora do intervalo (1–5) | `400 Bad Request` |
-| Erro interno inesperado | `500 Internal Server Error` |
+| Operação | Método | Rota | Perfil necessário |
+|---|---|---|---|
+| Listar destinos | GET | `/destinos` | Público |
+| Buscar por ID | GET | `/destinos/{id}` | Público |
+| Pesquisar | GET | `/destinos?busca=` | Público |
+| Cadastrar | POST | `/destinos` | ADMIN |
+| Atualizar | PUT | `/destinos/{id}` | ADMIN |
+| Avaliar | PATCH | `/destinos/{id}/avaliacao` | USER ou ADMIN |
+| Excluir | DELETE | `/destinos/{id}` | ADMIN |
 
 ---
 
-## 6. Como Executar
+## 4. Configuração do Banco de Dados
 
 ### Pré-requisitos
 
-- **Java 8** ou superior (JDK — não JRE)
-- **Eclipse IDE** ou outra IDE com suporte a Maven
+- PostgreSQL 14 ou superior instalado e rodando
+- Usuário `postgres` com senha `postgres` (ou ajuste o `application.properties`)
 
-### Pelo Eclipse (recomendado)
+### Criação do banco
 
-1. Vá em **File → Import → Maven → Existing Maven Projects**
-2. Selecione a pasta `viagens-api` e clique em **Finish**
-3. Clique com botão direito no projeto → **Run As → Java Application**
-4. Selecione **ViagensApiApplication** e confirme
-5. Aguarde: `Started ViagensApiApplication in X.XXX seconds`
-6. Acesse **http://localhost:8080** no navegador
+Conecte ao PostgreSQL e execute:
 
-### Pelo terminal (Maven)
-
-```bash
-cd viagens-api
-mvn spring-boot:run
+```sql
+CREATE DATABASE viagens_db;
 ```
 
-### Dados de exemplo
+O Flyway cria as tabelas automaticamente ao subir a aplicação via as migrations em `src/main/resources/db/migration/`.
 
-A aplicação inicia com **3 destinos pré-cadastrados**:
+### Migrations aplicadas automaticamente
 
-| ID | Nome | Localização | Média |
-|---|---|---|---|
-| 1 | Paris | Paris, França | 4.75 |
-| 2 | Rio de Janeiro | Rio de Janeiro, Brasil | 4.8 |
-| 3 | Kyoto | Kyoto, Japão | 4.9 |
+| Arquivo | O que faz |
+|---|---|
+| `V1__criar_tabelas_iniciais.sql` | Cria as tabelas destino, atividade, usuario e usuario_perfis |
+| `V2__dados_iniciais.sql` | Insere 2 usuários de teste e 3 destinos de exemplo |
 
 ---
 
-## 7. Exemplos de Teste
+## 5. Como Executar
 
-### Listar todos os destinos
+### Pré-requisitos
+
+- Java 8 ou superior (JDK)
+- Maven 3.8+
+- PostgreSQL rodando com o banco `viagens_db` criado
+
+### Passos
+
+```bash
+# 1. Clone o repositório
+git clone https://github.com/<seu-usuario>/viagens-api.git
+cd viagens-api
+
+# 2. (Opcional) Ajuste as credenciais do banco em:
+# src/main/resources/application.properties
+
+# 3. Execute
+mvn spring-boot:run
+```
+
+A aplicação estará disponível em `http://localhost:8080`.
+
+---
+
+## 6. Usuários e Perfis de Teste
+
+| Usuário | E-mail | Senha | Perfil | Permissões |
+|---|---|---|---|---|
+| Administrador | `admin@agencia.com` | `admin123` | ADMIN | Todos os endpoints |
+| Usuário Padrão | `user@agencia.com` | `user123` | USER | GET (público) + PATCH /avaliacao |
+
+### Como usar no Postman
+
+1. Abra a requisição desejada
+2. Vá na aba **Authorization**
+3. Selecione **Basic Auth**
+4. Preencha Username e Password conforme a tabela acima
+
+---
+
+## 7. Endpoints e Regras de Acesso
+
+**Base URL:** `http://localhost:8080`
+
+| Método | Rota | Descrição | Auth | Perfil |
+|---|---|---|---|---|
+| GET | `/destinos` | Lista todos os destinos | Não | Público |
+| GET | `/destinos?busca={termo}` | Pesquisa por nome/localização | Não | Público |
+| GET | `/destinos/{id}` | Detalha um destino | Não | Público |
+| POST | `/destinos` | Cadastra novo destino | Sim | ADMIN |
+| PUT | `/destinos/{id}` | Atualiza destino | Sim | ADMIN |
+| PATCH | `/destinos/{id}/avaliacao` | Registra avaliação | Sim | USER/ADMIN |
+| DELETE | `/destinos/{id}` | Remove destino | Sim | ADMIN |
+
+---
+
+## 8. Exemplos de Requisições
+
+### Listar destinos (público)
 ```bash
 curl http://localhost:8080/destinos
 ```
 
-### Pesquisar por termo
-```bash
-curl "http://localhost:8080/destinos?busca=Paris"
-```
-
-### Buscar por ID
-```bash
-curl http://localhost:8080/destinos/1
-```
-
-### Cadastrar destino
+### Cadastrar destino (ADMIN)
 ```bash
 curl -X POST http://localhost:8080/destinos \
   -H "Content-Type: application/json" \
+  -u admin@agencia.com:admin123 \
   -d '{
     "nome": "Lisboa",
     "localizacao": "Lisboa, Portugal",
@@ -242,57 +204,53 @@ curl -X POST http://localhost:8080/destinos \
   }'
 ```
 
-### Atualizar destino
-```bash
-curl -X PUT http://localhost:8080/destinos/1 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nome": "Paris",
-    "localizacao": "Paris, França",
-    "descricao": "A Cidade Luz, descrição atualizada.",
-    "atividades": ["Torre Eiffel", "Louvre", "Versalhes"]
-  }'
-```
-
-### Avaliar destino
+### Avaliar destino (USER ou ADMIN)
 ```bash
 curl -X PATCH http://localhost:8080/destinos/1/avaliacao \
   -H "Content-Type: application/json" \
+  -u user@agencia.com:user123 \
   -d '{ "nota": 4.8 }'
 ```
 
-### Excluir destino
+### Tentar cadastrar sem autenticação (deve retornar 401)
 ```bash
-curl -X DELETE http://localhost:8080/destinos/2
+curl -X POST http://localhost:8080/destinos \
+  -H "Content-Type: application/json" \
+  -d '{ "nome": "Teste" }'
+```
+
+### Tentar cadastrar com perfil USER (deve retornar 403)
+```bash
+curl -X POST http://localhost:8080/destinos \
+  -H "Content-Type: application/json" \
+  -u user@agencia.com:user123 \
+  -d '{ "nome": "Teste", "localizacao": "Teste" }'
 ```
 
 ---
 
-## 8. Funcionalidade de Avaliação
+### Formato de erro de autenticação
 
-A média é calculada de forma incremental sem armazenar o histórico de notas:
-
+```json
+{
+  "timestamp": "2026-09-19T10:00:00",
+  "status": 401,
+  "erro": "Unauthorized",
+  "mensagem": "Credenciais inválidas"
+}
 ```
-nova_media = media_anterior + (nota - media_anterior) / total_avaliacoes
-```
 
-Isso garante eficiência em memória — apenas dois valores são armazenados (`totalAvaliacoes` e `mediaAvaliacoes`), sem necessidade de uma lista de notas.
+### Formato de erro de autorização
+
+```json
+{
+  "timestamp": "2026-09-19T10:00:00",
+  "status": 403,
+  "erro": "Forbidden",
+  "mensagem": "Acesso negado"
+}
+```
 
 ---
 
-## 9. Interface Web
-
-A aplicação inclui uma interface web acessível em **http://localhost:8080** que permite testar todos os endpoints visualmente, sem necessidade de ferramentas externas como Postman ou curl.
-
-Funcionalidades disponíveis na interface:
-- **Listar** — exibe destinos em cards com estrelas e atividades
-- **Buscar por ID** — retorna JSON do destino
-- **Pesquisar** — filtra por nome ou localização
-- **Cadastrar** — formulário completo
-- **Atualizar** — PUT com todos os campos
-- **Avaliar** — PATCH com nota de 1.0 a 5.0
-- **Excluir** — DELETE com confirmação
-
----
-
-*Desenvolvido para o Desafio 1 de Desenvolvimento de Sistemas Web — UniSENAI ADS, 2026.*
+*Desenvolvido para o Desafio 2 de Desenvolvimento de Sistemas Web — UniSENAI ADS, 2026.*

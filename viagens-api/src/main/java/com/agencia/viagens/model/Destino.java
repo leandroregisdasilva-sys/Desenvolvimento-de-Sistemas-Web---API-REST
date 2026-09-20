@@ -1,37 +1,42 @@
 package com.agencia.viagens.model;
 
+import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
+@Entity
+@Table(name = "destino")
 public class Destino {
 
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
+
+	@Column(nullable = false, length = 100)
 	private String nome;
+
+	@Column(nullable = false, length = 150)
 	private String localizacao;
+
+	@Column(length = 1000)
 	private String descricao;
-	private List<String> atividades;
-	private double mediaAvaliacoes;
-	private int totalAvaliacoes;
+
+	@ElementCollection(fetch = FetchType.EAGER)
+	@CollectionTable(name = "atividade", joinColumns = @JoinColumn(name = "destino_id"))
+	@Column(name = "nome")
+	private List<String> atividades = new ArrayList<>();
+
+	@Column(name = "media_avaliacoes", nullable = false)
+	private double mediaAvaliacoes = 0.0;
+
+	@Column(name = "total_avaliacoes", nullable = false)
+	private int totalAvaliacoes = 0;
 
 	public Destino() {
-		this.atividades = new ArrayList<>();
-		this.mediaAvaliacoes = 0.0;
-		this.totalAvaliacoes = 0;
-	}
-
-	public Destino(Long id, String nome, String localizacao, String descricao, List<String> atividades) {
-		this.id = id;
-		this.nome = nome;
-		this.localizacao = localizacao;
-		this.descricao = descricao;
-		this.atividades = atividades != null ? new ArrayList<>(atividades) : new ArrayList<>();
-		this.mediaAvaliacoes = 0.0;
-		this.totalAvaliacoes = 0;
 	}
 
 	public void registrarAvaliacao(double nota) {
 		this.totalAvaliacoes++;
-
 		this.mediaAvaliacoes = this.mediaAvaliacoes + (nota - this.mediaAvaliacoes) / this.totalAvaliacoes;
 	}
 
@@ -72,7 +77,7 @@ public class Destino {
 	}
 
 	public void setAtividades(List<String> atividades) {
-		this.atividades = atividades != null ? new ArrayList<>(atividades) : new ArrayList<>();
+		this.atividades = atividades != null ? atividades : new ArrayList<>();
 	}
 
 	public double getMediaAvaliacoes() {
